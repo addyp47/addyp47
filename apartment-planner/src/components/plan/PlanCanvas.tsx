@@ -8,11 +8,16 @@ import { addRoom, addWalls, findVerticesAt, moveVertices, type VertexRef } from 
 import { dist } from '../../geometry/vec';
 import { formatFtIn } from '../../geometry/units';
 import { setPlanSvg } from './svgRef';
+import { OpeningShape, OpeningsLayer } from './OpeningShape';
+import { clampOpeningT, nearestWall, wallLength } from '../../geometry/plan';
+import { createOpening } from '../../model/defaults';
+import type { Opening, OpeningKind } from '../../model/types';
 
 type DragState =
   | { type: 'pan'; startX: number; startY: number; viewX: number; viewY: number; moved: boolean }
   | { type: 'vertex'; refs: VertexRef[]; anchor: Vec2 | null; start: Vec2 }
   | { type: 'background'; start: Vec2; bgStart: Vec2 }
+  | { type: 'opening'; id: string; grab: number }
   | null;
 
 const HINTS: Record<string, string> = {
@@ -20,7 +25,12 @@ const HINTS: Record<string, string> = {
   room: 'Click corners to trace a room · click the first point to close · Shift = free angle · Backspace undo point · Esc cancel',
   wall: 'Click to place wall points · double-click or Enter to finish · Shift = free angle · Esc cancel',
   calibrate: 'Click both ends of a wall whose real length you know',
+  door: 'Click a wall to add a door · the side you hover is the swing side',
+  window: 'Click a wall to add a window',
+  outlet: 'Click a wall to add an outlet on that side',
 };
+
+const isOpeningTool = (t: string): t is OpeningKind => t === 'door' || t === 'window' || t === 'outlet';
 
 export function PlanCanvas() {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -30,6 +40,7 @@ export function PlanCanvas() {
   const [trace, setTrace] = useState<Vec2[]>([]);
   const [snapState, setSnapState] = useState<{ point: Vec2; guides: Guide[]; vertex: boolean } | null>(null);
   const [shiftDown, setShiftDown] = useState(false);
+  const [openingPreview, setOpeningPreview] = useState<Opening | null>(null);
 
   const project = useEditor((s) => s.project);
   const view = useEditor((s) => s.view);
@@ -57,6 +68,7 @@ export function PlanCanvas() {
   useEffect(() => {
     setTrace([]);
     setSnapState(null);
+    setOpeningPreview(null);
   }, [tool]);
 
   useEffect(() => {
@@ -140,6 +152,16 @@ export function PlanCanvas() {
       free,
     });
 
+  const openingPreviewAt = (world: Vec2): Opening | null => {
+    if (!isOpeningTool(tool)) return null;
+    const hit = nearestWall(project.walls, world, 24 * px);
+    if (!hit) return null;
+    const o = createOpening(tool, hit.wall.id, 0, hit.side);
+    const L = wallLength(hit.wall);
+    o.t = clampOpeningT(Math.round(hit.t * L) / L, o.width, hit.wall);
+    return o;
+  };
+
   const onPointerDown = (e: React.PointerEvent) => {
     const { sx, sy } = localPoint(e);
     const world = screenToWorld(view, sx, sy);
@@ -177,8 +199,29 @@ export function PlanCanvas() {
       return;
     }
 
+    if (isOpeningTool(tool)) {
+      const prev = openingPreviewAt(world);
+      if (prev) {
+        mutate((d) => void d.openings.push(prev));
+        useEditor.setState({ selection: { kind: 'opening', id: prev.id } });
+      }
+      return;
+    }
+
     // Select tool
     switch (kind) {
+      case 'opening': {
+        const o = project.openings.find((x) => x.id === id);
+        const w = o && project.walls.find((x) => x.id === o.wallId);
+        select({ kind, id });
+        if (o && w) {
+          const hit = nearestWall([w], world, Infinity);
+          checkpoint();
+          drag.current = { type: 'opening', id, grab: (hit?.t ?? o.t) - o.t };
+          capture();
+        }
+        return;
+      }
       case 'vertex': {
         const at = { x: Number(target!.getAttribute('data-x')), y: Number(target!.getAttribute('data-y')) };
         const refs = findVerticesAt(project, at);
@@ -247,9 +290,32 @@ export function PlanCanvas() {
       return;
     }
 
+    if (d?.type === 'opening') {
+      mutate(
+        (draft) => {
+          const o = draft.openings.find((x) => x.id === d.id);
+          const w = o && draft.walls.find((x) => x.id === o.wallId);
+          if (!o || !w) return;
+          const hit = nearestWall([w], world, Infinity);
+          if (!hit) return;
+          // snap to whole inches along the wall
+          const L = wallLength(w);
+          const t = Math.round((hit.t - d.grab) * L) / L;
+          o.t = clampOpeningT(t, o.width, w);
+        },
+        { record: false },
+      );
+      return;
+    }
+
     if (tracing) {
       const s = snapTrace(world, e.shiftKey);
       setSnapState({ point: s.point, guides: s.guides, vertex: !!s.vertex });
+      return;
+    }
+
+    if (isOpeningTool(tool)) {
+      setOpeningPreview(openingPreviewAt(world));
       return;
     }
 
@@ -274,7 +340,7 @@ export function PlanCanvas() {
   const selectedWall = selection?.kind === 'wall' ? project.walls.find((w) => w.id === selection.id) : undefined;
   const selectedRoom = selection?.kind === 'room' ? project.rooms.find((r) => r.id === selection.id) : undefined;
 
-  const cursorStyle = tracing ? 'crosshair' : drag.current?.type === 'pan' ? 'grabbing' : 'default';
+  const cursorStyle = tracing || isOpeningTool(tool) ? 'crosshair' : drag.current?.type === 'pan' ? 'grabbing' : 'default';
 
   return (
     <div className="plan-wrap" ref={wrapRef}>
@@ -305,7 +371,20 @@ export function PlanCanvas() {
             px={px}
             interactive={!tracing}
           />
+          <OpeningsLayer
+            openings={project.openings}
+            walls={project.walls}
+            px={px}
+            selectedId={selection?.kind === 'opening' ? selection.id : null}
+            hoverId={hoverId}
+            interactive={!tracing && !isOpeningTool(tool)}
+          />
           <RoomLabels rooms={project.rooms} px={px} />
+          {openingPreview && (
+            <g className="no-export" pointerEvents="none">
+              <OpeningShape opening={openingPreview} wall={project.walls.find((w) => w.id === openingPreview.wallId)!} px={px} ghost selected />
+            </g>
+          )}
 
           {/* Selection affordances */}
           {selectedWall && !tracing && (

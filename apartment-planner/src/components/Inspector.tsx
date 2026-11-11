@@ -1,7 +1,7 @@
 import { useEditor } from '../store/editor';
 import type { RoomType } from '../model/types';
 import { LengthInput } from './LengthInput';
-import { wallDir, wallLength } from '../geometry/plan';
+import { clampOpeningT, wallDir, wallLength } from '../geometry/plan';
 import { add, scale } from '../geometry/vec';
 import { deleteSelection, findVerticesAt, moveVertices } from '../model/operations';
 import { polygonArea, bbox } from '../geometry/polygon';
@@ -116,6 +116,74 @@ export function Inspector() {
         </p>
         <button className="danger" onClick={remove}>
           Delete room
+        </button>
+      </div>
+    );
+  }
+
+  if (selection.kind === 'opening') {
+    const o = project.openings.find((x) => x.id === selection.id);
+    const w = o && project.walls.find((x) => x.id === o.wallId);
+    if (!o || !w) return null;
+    const upd = (fn: (op: (typeof project.openings)[number]) => void) =>
+      mutate((d) => {
+        const op = d.openings.find((x) => x.id === o.id);
+        if (op) fn(op);
+      });
+    const L = wallLength(w);
+    const label = { door: 'Door', window: 'Window', outlet: 'Outlet' }[o.kind];
+    return (
+      <div className="section">
+        <h3>{label}</h3>
+        {o.kind !== 'outlet' && (
+          <div className="row">
+            <label>Width</label>
+            <LengthInput
+              value={o.width}
+              min={6}
+              onCommit={(v) =>
+                upd((op) => {
+                  op.width = Math.min(v, L);
+                  op.t = clampOpeningT(op.t, op.width, w);
+                })
+              }
+            />
+          </div>
+        )}
+        <div className="row">
+          <label>From start</label>
+          <LengthInput
+            value={o.t * L - o.width / 2}
+            min={0}
+            onCommit={(v) => upd((op) => void (op.t = clampOpeningT((v + op.width / 2) / L, op.width, w)))}
+          />
+        </div>
+        {o.kind === 'door' && (
+          <div className="row">
+            <button onClick={() => upd((op) => void (op.hinge = op.hinge === 'start' ? 'end' : 'start'))}>⇋ Flip hinge</button>
+            <button onClick={() => upd((op) => void (op.side = op.side === 1 ? -1 : 1))}>⇅ Swing other side</button>
+          </div>
+        )}
+        {o.kind === 'outlet' && (
+          <div className="row">
+            <button onClick={() => upd((op) => void (op.side = op.side === 1 ? -1 : 1))}>⇅ Other side of wall</button>
+          </div>
+        )}
+        {o.kind === 'window' && (
+          <>
+            <div className="row">
+              <label>Sill height</label>
+              <LengthInput value={o.sillHeight} min={0} onCommit={(v) => upd((op) => void (op.sillHeight = v))} />
+            </div>
+            <div className="row">
+              <label>Top height</label>
+              <LengthInput value={o.headHeight} min={1} onCommit={(v) => upd((op) => void (op.headHeight = v))} />
+            </div>
+          </>
+        )}
+        <p className="muted">Drag it along the wall to reposition.</p>
+        <button className="danger" onClick={remove}>
+          Delete {label.toLowerCase()}
         </button>
       </div>
     );

@@ -124,3 +124,29 @@ export function projectBounds(p: Project, includeBackground = true): BBox | null
   }
   return bbox(pts);
 }
+
+export interface WallHit {
+  wall: Wall;
+  t: number;
+  distance: number;
+  /** Which side of the wall the point is on (+1 = left of a→b). */
+  side: 1 | -1;
+}
+
+/** Closest wall to `p` within `maxDist` (inches). */
+export function nearestWall(walls: Wall[], p: Vec2, maxDist: number): WallHit | null {
+  let best: WallHit | null = null;
+  for (const w of walls) {
+    const L = wallLength(w);
+    if (L < 1) continue;
+    const d = wallDir(w);
+    const rel = sub(p, w.a);
+    const t = Math.max(0, Math.min(1, dot(rel, d) / L));
+    const q = add(w.a, scale(d, t * L));
+    const dd = dist(p, q);
+    if (dd <= maxDist && (!best || dd < best.distance)) {
+      best = { wall: w, t, distance: dd, side: dot(rel, perp(d)) >= 0 ? 1 : -1 };
+    }
+  }
+  return best;
+}
