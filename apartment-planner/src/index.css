@@ -310,3 +310,30 @@ select {
   color: var(--muted);
   padding: 4px 0;
 }
+
+.list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+.list li {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.list li:hover {
+  background: #f3f3f0;
+}
+.list li.selected {
+  background: var(--accent-soft);
+}
+input[type='color'] {
+  width: 36px;
+  height: 26px;
+  padding: 0 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: white;
+}

@@ -1,19 +1,45 @@
+import { useState } from 'react';
 import { PlanCanvas } from './components/plan/PlanCanvas';
+import { Toolbar } from './components/Toolbar';
+import { ToolPalette } from './components/ToolPalette';
+import { BackgroundPanel } from './components/BackgroundPanel';
+import { Inspector } from './components/Inspector';
+import { RoomsPanel } from './components/RoomsPanel';
+import { CalibrateDialog } from './components/CalibrateDialog';
+import { useShortcuts } from './components/useShortcuts';
 import { useEditor } from './store/editor';
 
+type Tab = 'inspect' | 'rooms';
+
 export function App() {
-  const name = useEditor((s) => s.project.name);
+  useShortcuts();
+  const [tab, setTab] = useState<Tab>('inspect');
+  const toast = useEditor((s) => s.toast);
+
   return (
     <div className="app">
-      <header className="toolbar">
-        <strong className="brand">Apartment Planner</strong>
-        <span className="muted">{name}</span>
-      </header>
-      <aside className="sidebar left" />
+      <Toolbar />
+      <aside className="sidebar left">
+        <ToolPalette />
+        <BackgroundPanel />
+      </aside>
       <main className="canvas-area">
         <PlanCanvas />
       </main>
-      <aside className="sidebar right" />
+      <aside className="sidebar right">
+        <nav className="tabs">
+          <button className={tab === 'inspect' ? 'active' : ''} onClick={() => setTab('inspect')}>
+            Inspect
+          </button>
+          <button className={tab === 'rooms' ? 'active' : ''} onClick={() => setTab('rooms')}>
+            Rooms
+          </button>
+        </nav>
+        {tab === 'inspect' && <Inspector />}
+        {tab === 'rooms' && <RoomsPanel />}
+      </aside>
+      <CalibrateDialog />
+      {toast && <div className={`toast ${toast.kind}`}>{toast.message}</div>}
     </div>
   );
 }
