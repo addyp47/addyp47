@@ -33,6 +33,7 @@ interface EditorState {
   /** Room tool: also create walls along edges. */
   traceCreatesWalls: boolean;
   showWarnings: boolean;
+  viewMode: '2d' | '3d';
   calibration: CalibrationRequest | null;
   toast: { message: string; kind: 'info' | 'error' } | null;
 
@@ -43,6 +44,7 @@ interface EditorState {
   setViewport: (w: number, h: number) => void;
   setTraceCreatesWalls: (v: boolean) => void;
   setShowWarnings: (v: boolean) => void;
+  setViewMode: (m: '2d' | '3d') => void;
   setCalibration: (c: CalibrationRequest | null) => void;
   showToast: (message: string, kind?: 'info' | 'error') => void;
 
@@ -67,6 +69,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   viewport: { width: 800, height: 600 },
   traceCreatesWalls: true,
   showWarnings: true,
+  viewMode: '2d',
   calibration: null,
   toast: null,
 
@@ -77,6 +80,7 @@ export const useEditor = create<EditorState>((set, get) => ({
   setViewport: (width, height) => set({ viewport: { width, height } }),
   setTraceCreatesWalls: (traceCreatesWalls) => set({ traceCreatesWalls }),
   setShowWarnings: (showWarnings) => set({ showWarnings }),
+  setViewMode: (viewMode) => set({ viewMode, tool: 'select' }),
   setCalibration: (calibration) => set({ calibration }),
   showToast: (message, kind = 'info') => {
     set({ toast: { message, kind } });

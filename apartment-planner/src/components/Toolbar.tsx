@@ -6,6 +6,7 @@ import { IMPORTERS, serializeProject } from '../importers/json';
 import { downloadBlob, slugify } from '../persistence/download';
 import { exportPlanPng } from '../persistence/exportPng';
 import { getPlanSvg } from './plan/svgRef';
+import { capture3D, getExportRoots } from '../three/capture';
 
 export function Toolbar() {
   const name = useEditor((s) => s.project.name);
@@ -29,7 +30,45 @@ export function Toolbar() {
     downloadBlob(new Blob([serializeProject(p)], { type: 'application/json' }), `${slugify(p.name)}.apartment.json`);
   };
 
+  const viewMode = useEditor((s) => s.viewMode);
+  const setViewMode = useEditor((s) => s.setViewMode);
+
+  const exportGlb = async () => {
+    const roots = getExportRoots();
+    if (!roots) return;
+    try {
+      const [{ GLTFExporter }, THREE] = await Promise.all([import('three/examples/jsm/exporters/GLTFExporter.js'), import('three')]);
+      // Export in meters (glTF convention) with every wall opaque.
+      const root = new THREE.Group();
+      root.scale.setScalar(0.0254);
+      for (const r of roots) root.add(r.clone(true));
+      root.traverse((o) => {
+        const mesh = o as import('three').Mesh;
+        const m = mesh.material as import('three').Material | undefined;
+        if (m && !Array.isArray(m) && m.opacity < 1 && o.parent?.userData.kind === 'wall') {
+          const c = m.clone();
+          c.opacity = 1;
+          mesh.material = c;
+        }
+      });
+      root.updateMatrixWorld(true);
+      const data = (await new GLTFExporter().parseAsync(root, { binary: true })) as ArrayBuffer;
+      downloadBlob(new Blob([data], { type: 'model/gltf-binary' }), `${slugify(useEditor.getState().project.name)}.glb`);
+    } catch (e) {
+      showToast((e as Error).message, 'error');
+    }
+  };
+
   const exportPng = async () => {
+    if (useEditor.getState().viewMode === '3d') {
+      try {
+        const blob = await capture3D();
+        if (blob) downloadBlob(blob, `${slugify(useEditor.getState().project.name)}-3d.png`);
+      } catch (e) {
+        showToast((e as Error).message, 'error');
+      }
+      return;
+    }
     const svg = getPlanSvg();
     if (!svg) return;
     // Drop selection/hover highlights before capturing.
@@ -85,6 +124,15 @@ export function Toolbar() {
       <button onClick={fitToView} title="Fit plan to window">
         ⤢ Fit
       </button>
+      <span className="sep" />
+      <div className="segmented" role="group" aria-label="View">
+        <button className={viewMode === '2d' ? 'active' : ''} onClick={() => setViewMode('2d')}>
+          2D plan
+        </button>
+        <button className={viewMode === '3d' ? 'active' : ''} onClick={() => setViewMode('3d')}>
+          3D
+        </button>
+      </div>
       <span className="spacer" />
       <button onClick={() => setShowProjects(true)}>Layouts…</button>
       <button onClick={save} title="Layouts also autosave">
@@ -94,6 +142,7 @@ export function Toolbar() {
       <input ref={fileInput} type="file" hidden accept={IMPORTERS.map((i) => i.accept).join(',')} onChange={(e) => importFile(e.target.files?.[0])} />
       <button onClick={() => fileInput.current?.click()}>Import JSON</button>
       <button onClick={exportJson}>Export JSON</button>
+      {viewMode === '3d' && <button onClick={exportGlb}>Export GLB</button>}
       <button className="primary" onClick={exportPng}>
         Export PNG
       </button>

@@ -225,7 +225,7 @@ export function Inspector() {
         if (op) fn(op);
       });
     const L = wallLength(w);
-    const label = { door: 'Door', window: 'Window', outlet: 'Outlet' }[o.kind];
+    const label = { door: 'Door', window: 'Window', outlet: 'Outlet', opening: 'Open doorway' }[o.kind];
     return (
       <div className="section">
         <h3>{label}</h3>
@@ -263,7 +263,7 @@ export function Inspector() {
             <button onClick={() => upd((op) => void (op.side = op.side === 1 ? -1 : 1))}>⇅ Other side of wall</button>
           </div>
         )}
-        {o.kind === 'window' && (
+        {(o.kind === 'window' || o.kind === 'opening') && (
           <>
             <div className="row">
               <label>Sill height</label>

@@ -59,6 +59,14 @@ export function OpeningShape({
     );
   }
 
+  if (o.kind === 'opening') {
+    return (
+      <g opacity={ghost ? 0.6 : 1} {...hit}>
+        <path d={polyToPath(cut)} fill={CUT_FILL} stroke={selected || hovered ? stroke : 'none'} strokeWidth={sw} />
+      </g>
+    );
+  }
+
   // door
   const g = doorGeometry(o, w);
   const r = dist(g.hinge, g.latch);

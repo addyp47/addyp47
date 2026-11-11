@@ -47,6 +47,7 @@ export const OPENING_DEFAULTS: Record<OpeningKind, Pick<Opening, 'width' | 'sill
   door: { width: 32, sillHeight: 0, headHeight: 80 },
   window: { width: 36, sillHeight: 30, headHeight: 78 },
   outlet: { width: 4, sillHeight: 12, headHeight: 16 },
+  opening: { width: 36, sillHeight: 0, headHeight: 80 },
 };
 
 export function createOpening(kind: OpeningKind, wallId: string, t: number, side: 1 | -1 = 1): Opening {

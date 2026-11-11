@@ -4,6 +4,7 @@ import { screenToWorld, useEditor } from '../store/editor';
 import { FURNITURE_DND_TYPE } from './plan/PlanCanvas';
 import { polygonCentroid } from '../geometry/polygon';
 import type { Vec2 } from '../model/types';
+import { projectBounds } from '../geometry/plan';
 
 /** Place a catalog piece at a point (or the selected room / view center) and select it. */
 export function placeCatalogItem(c: CatalogItem, at?: Vec2) {
@@ -11,7 +12,14 @@ export function placeCatalogItem(c: CatalogItem, at?: Vec2) {
   let p = at;
   if (!p) {
     const room = s.selection?.kind === 'room' ? s.project.rooms.find((r) => r.id === s.selection!.id) : undefined;
-    p = room ? polygonCentroid(room.polygon) : screenToWorld(s.view, s.viewport.width / 2, s.viewport.height / 2);
+    const b = s.viewMode === '3d' ? projectBounds(s.project, false) : null;
+    p = room
+      ? polygonCentroid(room.polygon)
+      : b
+        ? { x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 }
+        : s.viewMode === '3d'
+          ? { x: 0, y: 0 }
+          : screenToWorld(s.view, s.viewport.width / 2, s.viewport.height / 2);
   }
   const f = createFurniture(c, p);
   s.mutate((d) => void d.furniture.push(f));

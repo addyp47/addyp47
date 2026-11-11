@@ -41,7 +41,8 @@ export interface Wall {
   height: number;
 }
 
-export type OpeningKind = 'door' | 'window' | 'outlet';
+/** 'opening' is a doorless pass-through (cased opening / archway). */
+export type OpeningKind = 'door' | 'window' | 'outlet' | 'opening';
 
 export interface Opening {
   id: Id;

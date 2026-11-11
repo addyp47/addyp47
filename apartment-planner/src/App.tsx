@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { PlanCanvas } from './components/plan/PlanCanvas';
 import { Toolbar } from './components/Toolbar';
 import { ToolPalette } from './components/ToolPalette';
@@ -14,6 +14,8 @@ import { StylePanel } from './components/StylePanel';
 import { getWarnings } from './analysis/warnings';
 import { useAutosave } from './persistence/useAutosave';
 
+const View3D = lazy(() => import('./three/View3D'));
+
 type Tab = 'inspect' | 'rooms' | 'style' | 'issues';
 
 export function App() {
@@ -21,6 +23,7 @@ export function App() {
   useAutosave();
   const [tab, setTab] = useState<Tab>('inspect');
   const toast = useEditor((s) => s.toast);
+  const viewMode = useEditor((s) => s.viewMode);
   const selection = useEditor((s) => s.selection);
   const warningCount = useEditor((s) => getWarnings(s.project).length);
 
@@ -32,12 +35,18 @@ export function App() {
     <div className="app">
       <Toolbar />
       <aside className="sidebar left">
-        <ToolPalette />
-        <BackgroundPanel />
+        {viewMode === '2d' && <ToolPalette />}
+        {viewMode === '2d' && <BackgroundPanel />}
         <FurnitureLibrary />
       </aside>
       <main className="canvas-area">
-        <PlanCanvas />
+        {viewMode === '2d' ? (
+          <PlanCanvas />
+        ) : (
+          <Suspense fallback={<div className="empty-3d">Loading 3D view…</div>}>
+            <View3D />
+          </Suspense>
+        )}
       </main>
       <aside className="sidebar right">
         <nav className="tabs">
