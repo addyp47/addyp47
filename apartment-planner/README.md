@@ -21,13 +21,49 @@ This is the main workflow: scan the apartment, import it, then test changes in 3
    photo-textured mesh) or as RoomPlan **JSON**.
 2. **Import** it with **Import scan / JSON** in the toolbar. Walls, doors, windows, and the
    furniture the scan recognized arrive at their measured sizes, and the app opens the 3D view.
-3. **Fix up** what a scan can't know: rename pieces, flip door swings (they default to swinging
-   into the room), and set room types. Scanned pieces are plain boxes labeled by category
-   (Sofa, Bed, Storage…).
+3. **Fix up** what a scan can't know: flip door swings (they default to swinging into the
+   room), set room types, and use the **Photos** tab to give scanned pieces their real names
+   and colors. Scanned pieces arrive labeled by category (Sofa, Bed, Storage…).
 4. **Test changes** in 3D or 2D: drag furniture, or add a piece from the library and edit it
    to the exact size of the thing you're considering. Pieces that hit a wall, block a door, or
    squeeze a walkway turn red and are listed under **Issues**.
 5. **Export GLB** (3D view) writes the model in meters for other 3D tools.
+
+### Walk through it
+
+In the 3D view, **Walk through** drops you to eye height in the biggest room. Use W A S D or
+the arrow keys to walk, drag to look around, and double-click the floor to jump to a spot.
+Walls and furniture stop you, and you can only pass through doors and open doorways, so a
+gap that is too tight to walk is too tight in the walkthrough too. Esc exits.
+
+### Furniture models
+
+Every piece is drawn as a parametric model generated to its exact width, depth, and height:
+sofas with cushions and arms, beds with a headboard and duvet, dressers with drawers,
+bookshelves with books, tables, chairs, lamps, plants, and kitchen and bath fixtures. They are
+built-in generic shapes, not models of specific products. A 78″ sofa and a 96″ sofa are each
+correct to the inch (the arms stay the same size and the seat grows), and style presets recolor
+them.
+
+### Use your photos
+
+The **Photos** tab takes photos of your rooms:
+
+- **Copy real colors.** Select a piece, then click its color in a photo. The same works for
+  the floor and the walls.
+- **Rename pieces** in the list beside the photo.
+- **Suggest with Claude (optional).** Enter your own Anthropic API key and Claude looks at the
+  photos and proposes a specific name and color for each piece it can see ("Teal three-seat
+  sofa"). You review the list and apply what's right; one undo reverts it. This is the only
+  feature that contacts a server: it sends the photos and the list of pieces from your browser
+  to the Anthropic API, and only when you click the button.
+
+Photos are kept for the current browser tab only. They are not saved with the layout.
+
+### Demo apartment
+
+**Layouts… → Open demo apartment** (or add `?demo&view=3d` to the URL) loads a furnished
+one-bedroom to try all of this without a scan.
 
 What to expect from scans:
 

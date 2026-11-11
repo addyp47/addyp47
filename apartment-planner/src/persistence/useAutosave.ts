@@ -1,11 +1,15 @@
 import { useEffect } from 'react';
 import { useEditor } from '../store/editor';
 import { loadLastOpened, saveProject } from './storage';
+import { createDemoProject } from '../demo/demoProject';
 
 /** Restore the last-opened layout on startup and autosave changes (debounced). */
 export function useAutosave(delay = 600) {
   useEffect(() => {
-    const last = loadLastOpened();
+    // ?demo opens the sample apartment (add &view=3d to start in 3D).
+    const params = new URLSearchParams(window.location.search);
+    const last = params.has('demo') ? createDemoProject() : loadLastOpened();
+    if (params.get('view') === '3d') useEditor.getState().setViewMode('3d');
     if (last) {
       // Wait a frame so the canvas has measured its viewport before fitting.
       requestAnimationFrame(() => useEditor.getState().loadProject(last));

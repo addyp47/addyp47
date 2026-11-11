@@ -14,6 +14,14 @@ export interface ViewTransform {
   y: number;
 }
 
+export interface Photo {
+  id: string;
+  name: string;
+  dataUrl: string;
+  width: number;
+  height: number;
+}
+
 export interface CalibrationRequest {
   a: Vec2;
   b: Vec2;
@@ -34,6 +42,10 @@ interface EditorState {
   traceCreatesWalls: boolean;
   showWarnings: boolean;
   viewMode: '2d' | '3d';
+  /** First-person walkthrough inside the 3D view. */
+  walkMode: boolean;
+  /** Reference photos for this session. Not saved with the layout (they'd fill browser storage). */
+  photos: Photo[];
   calibration: CalibrationRequest | null;
   toast: { message: string; kind: 'info' | 'error' } | null;
 
@@ -45,6 +57,9 @@ interface EditorState {
   setTraceCreatesWalls: (v: boolean) => void;
   setShowWarnings: (v: boolean) => void;
   setViewMode: (m: '2d' | '3d') => void;
+  setWalkMode: (v: boolean) => void;
+  addPhotos: (photos: Photo[]) => void;
+  removePhoto: (id: string) => void;
   setCalibration: (c: CalibrationRequest | null) => void;
   showToast: (message: string, kind?: 'info' | 'error') => void;
 
@@ -70,6 +85,8 @@ export const useEditor = create<EditorState>((set, get) => ({
   traceCreatesWalls: true,
   showWarnings: true,
   viewMode: '2d',
+  walkMode: false,
+  photos: [],
   calibration: null,
   toast: null,
 
@@ -80,7 +97,10 @@ export const useEditor = create<EditorState>((set, get) => ({
   setViewport: (width, height) => set({ viewport: { width, height } }),
   setTraceCreatesWalls: (traceCreatesWalls) => set({ traceCreatesWalls }),
   setShowWarnings: (showWarnings) => set({ showWarnings }),
-  setViewMode: (viewMode) => set({ viewMode, tool: 'select' }),
+  setViewMode: (viewMode) => set({ viewMode, tool: 'select', walkMode: false }),
+  setWalkMode: (walkMode) => set({ walkMode }),
+  addPhotos: (photos) => set({ photos: [...get().photos, ...photos] }),
+  removePhoto: (id) => set({ photos: get().photos.filter((p) => p.id !== id) }),
   setCalibration: (calibration) => set({ calibration }),
   showToast: (message, kind = 'info') => {
     set({ toast: { message, kind } });

@@ -1,7 +1,7 @@
 import type { FurnitureItem, Project, Vec2 } from '../model/types';
 import { CLEARANCE_EXEMPT_IDS, CLEARANCE_EXEMPT_KINDS } from '../catalog/furniture';
 import { doorGeometry, furniturePolygon, openingPolygon, wallPolygon } from '../geometry/plan';
-import { convexPolysOverlap, polygonDistance, type Poly } from '../geometry/polygon';
+import { convexPolysOverlap, polygonDistance, segmentsIntersect, type Poly } from '../geometry/polygon';
 import { lerp } from '../geometry/vec';
 import { formatInches } from '../geometry/units';
 
@@ -141,6 +141,8 @@ export function computeWarnings(project: Project): PlanWarning[] {
       }
       if (!checksClearance(a) || !checksClearance(b) || pairExempt(a, b)) continue;
       const c = polygonDistance(pa, pb);
+      // A gap that runs through a wall isn't a walkway (pieces in neighboring rooms).
+      if (project.walls.some((w) => segmentsIntersect(c.a, c.b, w.a, w.b))) continue;
       if (c.distance > TOUCHING_GAP && c.distance < WALKWAY_MIN) {
         out.push({
           id: `clear:${a.id}:${b.id}`,

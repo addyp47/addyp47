@@ -68,3 +68,12 @@ describe('warnings', () => {
     expect(computeWarnings(p).filter((w) => w.kind === 'overlap')).toHaveLength(0);
   });
 });
+
+describe('walkway checks and walls', () => {
+  it('ignores gaps that run through a wall', () => {
+    const p = room();
+    place(p, 'dresser', 72, 120 - 2.5 - 9); // inside, against the bottom wall
+    place(p, 'bookshelf', 72, 120 + 2.5 + 6); // next room, against the other side of the same wall
+    expect(computeWarnings(p).filter((w) => w.kind === 'clearance')).toHaveLength(0);
+  });
+});

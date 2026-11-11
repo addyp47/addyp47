@@ -119,9 +119,23 @@ and objects.
   and head heights, maps object categories to furniture kinds, and derives room polygons from
   closed wall loops.
 
+## Walkthrough, models, photos
+
+- `three/walk.ts` is the pure collision logic for first-person mode: `isBlocked` tests a
+  body-sized circle against walls (passable at doors and open doorways) and furniture
+  footprints; `walkStep` moves with sliding. `View3D` owns the camera and key handling.
+- `three/furnitureModels.ts` generates a model per piece from its `kind`, `catalogId`, and
+  exact dimensions. Parts are built from rounded boxes and cylinders in the piece's local
+  frame, colored from the palette.
+- `components/PhotosPanel.tsx` holds session-only reference photos (in the store, not in
+  `Project`), an eyedropper that writes colors onto pieces, floor, or walls, and the optional
+  Claude suggestions. `ai/labelFromPhotos.ts` makes that call with the Anthropic SDK from the
+  browser using the user's own key, with a schema-constrained response; suggestions are
+  filtered (`usableSuggestions`) and reviewed before one undoable `mutate`.
+- `demo/demoProject.ts` builds the sample apartment in code.
+
 ## Later
 
-- **First-person walkthrough** camera (eye height, walk between rooms) on the existing scene.
-- **Real furniture models** (GLB per catalog item) in place of massing boxes.
-- **Photos as reference:** attach photos to rooms or pieces; use them to set colors and names.
+- **Real product models:** attach a GLB to a piece (needs IndexedDB storage for the files).
 - **Room splitting** for multi-room scans (planar face tracing instead of simple loops).
+- **Saving photos** with a layout (IndexedDB), and photo-to-piece pinning.

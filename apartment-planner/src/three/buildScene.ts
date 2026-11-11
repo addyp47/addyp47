@@ -1,7 +1,8 @@
 import * as THREE from 'three';
-import type { FurnitureItem, Opening, Project, Wall } from '../model/types';
+import type { Opening, Project, Wall } from '../model/types';
 import { doorGeometry, wallLength } from '../geometry/plan';
 import { furnitureColor } from '../catalog/furniture';
+import { furnitureModel } from './furnitureModels';
 
 /**
  * Builds three.js objects from the plan model. World units are inches;
@@ -79,6 +80,12 @@ export function buildStructure(project: Project, blockedDoorIds: Set<string>): T
     floor.receiveShadow = true;
     floor.userData = { kind: 'room', id: room.id };
     root.add(floor);
+    // Ceiling: only shown in walk mode (View3D toggles it).
+    const ceiling = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xf4f2ec, side: THREE.DoubleSide }));
+    ceiling.position.y = project.ceilingHeight;
+    ceiling.visible = false;
+    ceiling.userData = { kind: 'ceiling' };
+    root.add(ceiling);
   }
 
   for (const wall of project.walls) {
@@ -142,76 +149,6 @@ export function buildStructure(project: Project, blockedDoorIds: Set<string>): T
   return root;
 }
 
-function box(w: number, h: number, d: number, color: THREE.ColorRepresentation, x = 0, y = 0, z = 0): THREE.Mesh {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(Math.max(w, 0.1), Math.max(h, 0.1), Math.max(d, 0.1)), new THREE.MeshStandardMaterial({ color, roughness: 0.8 }));
-  m.position.set(x, y + h / 2, z);
-  return m;
-}
-
-function cyl(rx: number, rz: number, h: number, color: THREE.ColorRepresentation, y = 0): THREE.Mesh {
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, Math.max(h, 0.1), 28), new THREE.MeshStandardMaterial({ color, roughness: 0.8 }));
-  m.scale.set(rx, 1, rz);
-  m.position.y = y + h / 2;
-  return m;
-}
-
-const shadeHex = (hex: string, amt: number) => new THREE.Color(hex).lerp(new THREE.Color(amt < 0 ? 0x000000 : 0xffffff), Math.abs(amt));
-
-/** Simple recognizable massing per furniture kind. Local frame: width on x, depth on z, back at -z, floor at y = 0. */
-function furnitureParts(f: FurnitureItem, color: string): THREE.Mesh[] {
-  const { width: w, depth: d, height: h } = f;
-  const round = f.shape === 'ellipse';
-  switch (f.kind) {
-    case 'sofa': {
-      const seat = Math.min(18, h * 0.5);
-      const back = Math.min(8, d * 0.25);
-      const arm = Math.min(7, w * 0.1);
-      return [
-        box(w, seat, d, color),
-        box(w, h - seat, back, shadeHex(color, -0.12), 0, seat, -d / 2 + back / 2),
-        box(arm, Math.min(h - seat, 8), d - back, shadeHex(color, -0.08), -w / 2 + arm / 2, seat, back / 2),
-        box(arm, Math.min(h - seat, 8), d - back, shadeHex(color, -0.08), w / 2 - arm / 2, seat, back / 2),
-      ];
-    }
-    case 'bed': {
-      const base = Math.min(24, h * 0.6);
-      return [
-        box(w, base * 0.5, d, shadeHex(color, -0.25)),
-        box(w - 2, base * 0.5, d - 4, shadeHex(color, 0.55), 0, base * 0.5, 1),
-        box(w - 2, 1.5, d * 0.6, color, 0, base, d * 0.2 - 1),
-        box(w, h, 3, shadeHex(color, -0.3), 0, 0, -d / 2 + 1.5),
-        ...(w >= 50 ? [-1, 1] : [0]).map((k) => box(Math.min(26, w * 0.4), 5, 16, 0xffffff, (k * w) / 4, base, -d / 2 + 13)),
-      ];
-    }
-    case 'table':
-    case 'desk': {
-      const top = Math.min(2, h * 0.15);
-      if (round) return [cyl(w / 2, d / 2, top, color, h - top), cyl(Math.min(4, w / 6), Math.min(4, d / 6), h - top, shadeHex(color, -0.2))];
-      const leg = Math.min(2.5, w / 8, d / 8);
-      const legs = [-1, 1].flatMap((sx) => [-1, 1].map((sz) => box(leg, h - top, leg, shadeHex(color, -0.2), sx * (w / 2 - leg), 0, sz * (d / 2 - leg))));
-      return [box(w, top, d, color, 0, h - top), ...legs];
-    }
-    case 'chair': {
-      if (round) return [cyl(w / 2, d / 2, h, color)];
-      const seat = Math.min(18, h * 0.55);
-      return [box(w, seat, d, color), box(w, h - seat, Math.min(4, d * 0.2), shadeHex(color, -0.15), 0, seat, -d / 2 + Math.min(2, d * 0.1))];
-    }
-    case 'rug':
-      return [round ? cyl(w / 2, d / 2, 0.5, color) : box(w, 0.5, d, color)];
-    case 'lamp':
-      return [cyl(w / 2, d / 2, 1.5, 0x333333), cyl(0.7, 0.7, h * 0.8, 0x333333), cyl(w / 2, d / 2, h * 0.2, shadeHex(color, 0.5), h * 0.8)];
-    case 'plant': {
-      const pot = h * 0.3;
-      const leaves = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), new THREE.MeshStandardMaterial({ color, roughness: 0.9 }));
-      leaves.scale.set(w / 2, (h - pot) / 2, d / 2);
-      leaves.position.y = pot + (h - pot) / 2;
-      return [cyl(w / 3.2, d / 3.2, pot, 0xb9a58c), leaves];
-    }
-    default:
-      return [round ? cyl(w / 2, d / 2, h, color) : box(w, h, d, color)];
-  }
-}
-
 export interface FurnitureBuildOptions {
   selectedId: string | null;
   flaggedIds: Set<string>;
@@ -225,7 +162,7 @@ export function buildFurniture(project: Project, opts: FurnitureBuildOptions): T
     group.rotation.y = (-f.rotation * Math.PI) / 180;
     group.userData = { kind: 'furniture', id: f.id };
     const flagged = opts.flaggedIds.has(f.id);
-    for (const part of furnitureParts(f, furnitureColor(f, project.style.palette))) {
+    for (const part of furnitureModel(f, furnitureColor(f, project.style.palette), project.style.palette)) {
       part.castShadow = f.kind !== 'rug';
       part.receiveShadow = true;
       if (flagged) {

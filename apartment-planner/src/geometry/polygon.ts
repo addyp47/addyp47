@@ -55,7 +55,7 @@ export function pointSegmentDistance(p: Vec2, a: Vec2, b: Vec2): number {
   return dist(p, closestPointOnSegment(p, a, b));
 }
 
-function segmentsIntersect(a1: Vec2, a2: Vec2, b1: Vec2, b2: Vec2): boolean {
+export function segmentsIntersect(a1: Vec2, a2: Vec2, b1: Vec2, b2: Vec2): boolean {
   const d1 = cross(sub(a2, a1), sub(b1, a1));
   const d2 = cross(sub(a2, a1), sub(b2, a1));
   const d3 = cross(sub(b2, b1), sub(a1, b1));

@@ -88,7 +88,8 @@ export const CATALOG: CatalogItem[] = [
 export const CATALOG_BY_ID = new Map(CATALOG.map((c) => [c.id, c]));
 
 /** Small or easily-moved pieces don't trigger walkway warnings (chairs pull out, lamps tuck in). */
-export const CLEARANCE_EXEMPT_KINDS: FurnitureKind[] = ['rug', 'chair', 'lamp', 'plant'];
+/** Appliances and bathroom fixtures are built in, so their gaps aren't something to rearrange. */
+export const CLEARANCE_EXEMPT_KINDS: FurnitureKind[] = ['rug', 'chair', 'lamp', 'plant', 'appliance'];
 export const CLEARANCE_EXEMPT_IDS = new Set(['side-table', 'nightstand', 'mirror', 'room-divider', 'filing']);
 
 export function createFurniture(c: CatalogItem, at: { x: number; y: number }, rotation = 0): FurnitureItem {

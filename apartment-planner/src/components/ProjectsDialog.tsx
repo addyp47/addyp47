@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useEditor } from '../store/editor';
 import { deleteSaved, listSaved, loadSaved, saveProject } from '../persistence/storage';
 import { createEmptyProject, newId } from '../model/defaults';
+import { createDemoProject } from '../demo/demoProject';
 
 export function ProjectsDialog({ onClose }: { onClose: () => void }) {
   const current = useEditor((s) => s.project);
@@ -79,6 +80,15 @@ export function ProjectsDialog({ onClose }: { onClose: () => void }) {
           ))}
         </ul>
         <div className="actions">
+          <button
+            onClick={() => {
+              persistCurrent();
+              loadProject(createDemoProject());
+              onClose();
+            }}
+          >
+            Open demo apartment
+          </button>
           <button onClick={saveCopy}>Save a copy</button>
           <button onClick={newProject}>New layout</button>
           <button className="primary" onClick={onClose}>

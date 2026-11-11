@@ -20,3 +20,38 @@ describe('3D wall pieces', () => {
     expect(mid.map((p) => [p.y0, p.y1])).toEqual([[0, 30], [78, 96]]);
   });
 });
+
+import { isBlocked, walkStep } from '../three/walk';
+import { createEmptyProject } from '../model/defaults';
+import { CATALOG_BY_ID, createFurniture } from '../catalog/furniture';
+
+describe('walkthrough collision', () => {
+  const setup = () => {
+    const p = createEmptyProject();
+    const w = createWall({ x: 0, y: 0 }, { x: 200, y: 0 });
+    p.walls.push(w);
+    p.openings.push({ ...createOpening('door', w.id, 0.5), width: 32 }); // doorway 84..116
+    return p;
+  };
+  it('stops at walls but passes through doorways', () => {
+    const p = setup();
+    expect(isBlocked(p, { x: 30, y: 5 })).toBe(true);
+    expect(isBlocked(p, { x: 100, y: 0 })).toBe(false);
+    // walking straight at the wall stops; through the door continues
+    expect(walkStep(p, { x: 30, y: 30 }, { x: 0, y: -25 })).toEqual({ x: 30, y: 30 });
+    expect(walkStep(p, { x: 100, y: 15 }, { x: 0, y: -25 }).y).toBe(-10);
+  });
+  it('slides along a wall instead of sticking', () => {
+    const p = setup();
+    const next = walkStep(p, { x: 30, y: 13 }, { x: 5, y: -5 });
+    expect(next).toEqual({ x: 35, y: 13 });
+  });
+  it('is blocked by furniture but steps over rugs', () => {
+    const p = setup();
+    p.furniture.push(createFurniture(CATALOG_BY_ID.get('sofa-3')!, { x: 60, y: 100 }));
+    p.furniture.push(createFurniture(CATALOG_BY_ID.get('rug-5x8')!, { x: 150, y: 100 }));
+    expect(isBlocked(p, { x: 60, y: 100 })).toBe(true);
+    expect(isBlocked(p, { x: 60, y: 124 })).toBe(true); // within body radius of the sofa front
+    expect(isBlocked(p, { x: 150, y: 100 })).toBe(false);
+  });
+});

@@ -37,7 +37,7 @@ export function useShortcuts() {
         return;
       }
 
-      if (sel?.kind === 'furniture') {
+      if (sel?.kind === 'furniture' && !s.walkMode) {
         const nudge = e.shiftKey ? 6 : 1;
         const moves: Record<string, [number, number]> = {
           ArrowLeft: [-nudge, 0],
@@ -76,7 +76,7 @@ export function useShortcuts() {
         }
       }
 
-      if (!mod && !e.altKey) {
+      if (!mod && !e.altKey && s.viewMode === '2d') {
         const t = TOOLS.find((x) => x.key.toLowerCase() === key);
         if (t) s.setTool(t.id);
       }
