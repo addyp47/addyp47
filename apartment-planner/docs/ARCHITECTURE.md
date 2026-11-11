@@ -64,18 +64,33 @@ Design notes:
 
 ```
 src/
-  model/        types, defaults/factories, schema migration      (pure TS, no React)
-  geometry/     vectors, polygons (SAT, distances), plan shapes, units/ft-in formatting
-  catalog/      furniture library with real default dimensions
-  styles/       style presets, palettes, renter-friendly ideas, rug sizing
-  analysis/     warnings: wall overlap, door swing, walkway clearance
-  persistence/  localStorage slots, JSON import/export, PNG export
-  importers/    PlanImporter interface (JSON now; RoomPlan USDZ later)
-  store/        zustand editor store: project + undo/redo + selection/tool/view
+  model/        types.ts, defaults.ts (factories), operations.ts (add room/walls,
+                calibrate-rescale, move shared vertices, delete), migrate.ts   (pure TS)
+  geometry/     vec, polygon (SAT overlap, distances, inscribed rect), plan (wall/door/
+                furniture footprints, nearest wall), snapping (90°/vertex/alignment), units
+  catalog/      furniture.ts: library with real default dimensions + palette colors
+  styles/       presets.ts (palettes, room suggestions, ideas w/ renter alternatives),
+                rugs.ts (rug sizing + placement per room)
+  analysis/     warnings.ts: wall overlap, door swing, furniture overlap, walkway clearance
+  persistence/  storage.ts (localStorage slots), useAutosave, exportPng, image downscaling
+  importers/    PlanImporter interface + JSON importer (RoomPlan later)
+  store/        editor.ts: zustand store with project, undo/redo, selection/tool/view
   components/
-    plan/       PlanCanvas (pointer routing, pan/zoom) + one component per layer
-    *.tsx       Toolbar, sidebars, Inspector, StylePanel, WarningsPanel, dialogs
+    plan/       PlanCanvas (pointer routing to tools, pan/zoom, drag state machine) and
+                pure layer renderers: Grid, layers (rooms/walls/dims/handles),
+                OpeningShape, FurnitureShape, WarningsLayer
+    *.tsx       Toolbar, ToolPalette, BackgroundPanel, FurnitureLibrary, Inspector,
+                RoomsPanel, StylePanel, WarningsPanel, CalibrateDialog, ProjectsDialog
 ```
+
+Interaction notes:
+
+- Layers are pure renderers that mark hit targets with `data-kind` / `data-id`. `PlanCanvas`
+  has a single pointer handler that routes on those attributes. That keeps all drag logic
+  (move, rotate, resize, vertex, opening, background, pan) in one small state machine.
+- Drags call `checkpoint()` once and then `mutate(fn, { record: false })` on every move, so a
+  whole drag is one undo step.
+- UI-only SVG nodes carry `className="no-export"` and are stripped from the PNG export.
 
 Anything React-free (model, geometry, analysis, styles, importers) can be reused
 as-is by a future `src/three/` walkthrough view or a Web Worker that parses USDZ.

@@ -7,9 +7,10 @@ import { createEmptyProject } from './defaults';
  * bump; each step transforms vN → vN+1.
  */
 export function migrateProject(raw: unknown): Project {
-  if (!raw || typeof raw !== 'object') throw new Error('Not a project file');
+  const notOurs = "This doesn't look like an Apartment Planner layout file.";
+  if (!raw || typeof raw !== 'object') throw new Error(notOurs);
   const data = raw as Partial<Project> & { version?: number };
-  if (typeof data.version !== 'number') throw new Error('Missing schema version');
+  if (typeof data.version !== 'number' || (!Array.isArray(data.walls) && !Array.isArray(data.rooms))) throw new Error(notOurs);
   if (data.version > SCHEMA_VERSION) {
     throw new Error(`This file was made by a newer version (v${data.version}).`);
   }

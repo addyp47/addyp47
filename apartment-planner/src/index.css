@@ -472,3 +472,13 @@ input[type='color'] {
   color: var(--accent);
   vertical-align: 1px;
 }
+
+.proj-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.list.projects li {
+  border: 1px solid var(--border);
+  margin-bottom: 6px;
+}

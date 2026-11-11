@@ -66,7 +66,7 @@ export function RoomsLayer({
               pointerEvents="none"
             />
             {selection?.kind === 'room' && selection.id === r.id && (
-              <path d={d} fill="none" stroke={SELECT_COLOR} strokeWidth={2 * px} strokeDasharray={`${6 * px} ${4 * px}`} pointerEvents="none" />
+              <path className="no-export" d={d} fill="none" stroke={SELECT_COLOR} strokeWidth={2 * px} strokeDasharray={`${6 * px} ${4 * px}`} pointerEvents="none" />
             )}
           </g>
         );

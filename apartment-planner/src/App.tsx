@@ -12,11 +12,13 @@ import { useEditor } from './store/editor';
 import { WarningsPanel } from './components/WarningsPanel';
 import { StylePanel } from './components/StylePanel';
 import { getWarnings } from './analysis/warnings';
+import { useAutosave } from './persistence/useAutosave';
 
 type Tab = 'inspect' | 'rooms' | 'style' | 'issues';
 
 export function App() {
   useShortcuts();
+  useAutosave();
   const [tab, setTab] = useState<Tab>('inspect');
   const toast = useEditor((s) => s.toast);
   const selection = useEditor((s) => s.selection);
