@@ -161,3 +161,36 @@ export function bbox(points: Vec2[]): BBox | null {
 export function polyToPath(poly: Poly): string {
   return poly.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ') + ' Z';
 }
+
+/**
+ * Largest axis-aligned rectangle inside a polygon, searched over the grid of
+ * vertex coordinates (exact for rectilinear rooms, a good estimate otherwise).
+ */
+export function largestInscribedRect(poly: Poly): BBox | null {
+  const b = bbox(poly);
+  if (!b) return null;
+  const uniq = (v: number[]) => [...new Set(v.map((n) => Math.round(n * 100) / 100))].sort((a, c) => a - c);
+  const xs = uniq(poly.map((p) => p.x));
+  const ys = uniq(poly.map((p) => p.y));
+  if (xs.length > 24 || ys.length > 24) return b;
+  // inside[i][j]: the grid cell between xs[i..i+1] and ys[j..j+1] is inside the polygon
+  const inside = xs.slice(0, -1).map((x0, i) =>
+    ys.slice(0, -1).map((y0, j) => pointInPolygon({ x: (x0 + xs[i + 1]) / 2, y: (y0 + ys[j + 1]) / 2 }, poly)),
+  );
+  let best: BBox | null = null;
+  let bestArea = 0;
+  for (let i0 = 0; i0 < xs.length - 1; i0++)
+    for (let i1 = i0 + 1; i1 < xs.length; i1++)
+      for (let j0 = 0; j0 < ys.length - 1; j0++)
+        for (let j1 = j0 + 1; j1 < ys.length; j1++) {
+          const area = (xs[i1] - xs[i0]) * (ys[j1] - ys[j0]);
+          if (area <= bestArea) continue;
+          let ok = true;
+          for (let i = i0; i < i1 && ok; i++) for (let j = j0; j < j1 && ok; j++) ok = inside[i][j];
+          if (ok) {
+            bestArea = area;
+            best = { minX: xs[i0], minY: ys[j0], maxX: xs[i1], maxY: ys[j1] };
+          }
+        }
+  return best ?? b;
+}

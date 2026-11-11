@@ -10,9 +10,10 @@ import { CalibrateDialog } from './components/CalibrateDialog';
 import { useShortcuts } from './components/useShortcuts';
 import { useEditor } from './store/editor';
 import { WarningsPanel } from './components/WarningsPanel';
+import { StylePanel } from './components/StylePanel';
 import { getWarnings } from './analysis/warnings';
 
-type Tab = 'inspect' | 'rooms' | 'issues';
+type Tab = 'inspect' | 'rooms' | 'style' | 'issues';
 
 export function App() {
   useShortcuts();
@@ -22,7 +23,7 @@ export function App() {
   const warningCount = useEditor((s) => getWarnings(s.project).length);
 
   useEffect(() => {
-    if (selection) setTab((t) => (t === 'issues' ? t : 'inspect'));
+    if (selection) setTab((t) => (t === 'issues' || t === 'style' ? t : 'inspect'));
   }, [selection]);
 
   return (
@@ -44,12 +45,16 @@ export function App() {
           <button className={tab === 'rooms' ? 'active' : ''} onClick={() => setTab('rooms')}>
             Rooms
           </button>
+          <button className={tab === 'style' ? 'active' : ''} onClick={() => setTab('style')}>
+            Style
+          </button>
           <button className={tab === 'issues' ? 'active' : ''} onClick={() => setTab('issues')}>
             Issues{warningCount > 0 && <span className="badge">{warningCount}</span>}
           </button>
         </nav>
         {tab === 'inspect' && <Inspector />}
         {tab === 'rooms' && <RoomsPanel />}
+        {tab === 'style' && <StylePanel />}
         {tab === 'issues' && <WarningsPanel />}
       </aside>
       <CalibrateDialog />

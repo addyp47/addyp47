@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { screenToWorld, useEditor } from '../../store/editor';
 import type { Vec2 } from '../../model/types';
 import { Grid } from './Grid';
-import { BackgroundLayer, DimensionLine, RoomLabels, RoomsLayer, VertexHandles, WallDimensions, WallsLayer, SELECT_COLOR } from './layers';
+import { BackgroundLayer, DimensionLine, RoomLabels, RoomsLayer, VertexHandles, WallDimensions, WallsLayer, SELECT_COLOR, WALL_FILL } from './layers';
 import { projectVertices, snapPoint, type Guide } from '../../geometry/snapping';
 import { addRoom, addWalls, findVerticesAt, moveVertices, type VertexRef } from '../../model/operations';
 import { dist } from '../../geometry/vec';
@@ -452,7 +452,7 @@ export function PlanCanvas() {
           ))}
           <WallsLayer
             walls={project.walls}
-            color={project.style.palette.walls}
+            color={WALL_FILL}
             selection={selection}
             hoverId={hoverId}
             px={px}

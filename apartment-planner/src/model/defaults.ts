@@ -13,7 +13,7 @@ export const DEFAULT_WALL_THICKNESS = 5;
 export const DEFAULT_CEILING_HEIGHT = 96;
 
 export const DEFAULT_PALETTE: Palette = {
-  walls: '#3a3a3a',
+  walls: '#ece8df',
   floor: '#efe9df',
   wood: '#b48a5a',
   textile: '#9aa3ab',

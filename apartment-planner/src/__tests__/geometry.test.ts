@@ -62,3 +62,11 @@ describe('plan geometry', () => {
     expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(80);
   });
 });
+
+import { largestInscribedRect } from '../geometry/polygon';
+describe('largestInscribedRect', () => {
+  it('finds the big part of an L-shaped room', () => {
+    const L = [{ x: 0, y: 0 }, { x: 250, y: 0 }, { x: 250, y: 150 }, { x: 100, y: 150 }, { x: 100, y: 300 }, { x: 0, y: 300 }];
+    expect(largestInscribedRect(L)).toEqual({ minX: 0, minY: 0, maxX: 250, maxY: 150 });
+  });
+});

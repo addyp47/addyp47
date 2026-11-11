@@ -373,3 +373,102 @@ input[type='color'] {
 .ok {
   color: var(--accent);
 }
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.preset {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 6px;
+  text-align: left;
+}
+.preset.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.swatches {
+  display: flex;
+  height: 18px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.swatches span {
+  flex: 1;
+}
+.preset-name {
+  font-size: 12px;
+  font-weight: 500;
+}
+.renter-toggle {
+  align-items: flex-start;
+  margin-top: 12px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+}
+.renter-toggle input {
+  margin-top: 3px;
+}
+.room-sugg {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+.room-sugg-head {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 6px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.chip {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+.chip.has {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent);
+}
+.rug-sugg {
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #f6f3ee;
+  margin-bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ideas {
+  margin: 0;
+  padding-left: 16px;
+  line-height: 1.45;
+}
+.ideas li {
+  margin-bottom: 3px;
+}
+.idea-cat {
+  font-weight: 600;
+  margin: 8px 0 3px;
+}
+.tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  vertical-align: 1px;
+}

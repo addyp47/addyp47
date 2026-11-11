@@ -5,6 +5,9 @@ import { formatArea, formatFtIn } from '../../geometry/units';
 import { lerp, perp, norm, sub, add, scale as vscale } from '../../geometry/vec';
 
 export const SELECT_COLOR = '#2f7de1';
+export const WALL_FILL = '#33363b';
+/** Inches of wall-paint band shown inside each room (walls cover ~half their thickness). */
+const WALL_PAINT_BAND = 6;
 
 export function BackgroundLayer({ bg }: { bg: BackgroundImage | null }) {
   if (!bg || !bg.visible) return null;
@@ -37,19 +40,37 @@ export function RoomsLayer({
   const floor = project.style.palette.floor;
   return (
     <g>
-      {project.rooms.map((r) => (
-        <path
-          key={r.id}
-          data-kind={interactive ? 'room' : undefined}
-          data-id={r.id}
-          d={polyToPath(r.polygon)}
-          fill={r.floorColor ?? floor}
-          fillOpacity={project.background?.visible ? 0.55 : 1}
-          stroke={selection?.kind === 'room' && selection.id === r.id ? SELECT_COLOR : 'none'}
-          strokeWidth={2 * px}
-          strokeDasharray={`${6 * px} ${4 * px}`}
-        />
-      ))}
+      {project.rooms.map((r) => {
+        const d = polyToPath(r.polygon);
+        const bgOpacity = project.background?.visible ? 0.55 : 1;
+        return (
+          <g key={r.id}>
+            <clipPath id={`clip-${r.id}`}>
+              <path d={d} />
+            </clipPath>
+            <path
+              data-kind={interactive ? 'room' : undefined}
+              data-id={r.id}
+              d={d}
+              fill={r.floorColor ?? floor}
+              fillOpacity={bgOpacity}
+            />
+            {/* Wall paint: a band along the inside of the room */}
+            <path
+              d={d}
+              fill="none"
+              stroke={project.style.palette.walls}
+              strokeWidth={WALL_PAINT_BAND * 2}
+              strokeOpacity={bgOpacity}
+              clipPath={`url(#clip-${r.id})`}
+              pointerEvents="none"
+            />
+            {selection?.kind === 'room' && selection.id === r.id && (
+              <path d={d} fill="none" stroke={SELECT_COLOR} strokeWidth={2 * px} strokeDasharray={`${6 * px} ${4 * px}`} pointerEvents="none" />
+            )}
+          </g>
+        );
+      })}
     </g>
   );
 }
