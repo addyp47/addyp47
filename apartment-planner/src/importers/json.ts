@@ -2,6 +2,9 @@ import type { PlanImporter } from './types';
 import type { Project } from '../model/types';
 import { migrateProject } from '../model/migrate';
 import { newId } from '../model/defaults';
+import { capturedRoomToScan, isCapturedRoom } from './roomplan/capturedRoom';
+import { scanToProject } from './roomplan/scan';
+import { roomplanUsdzImporter } from './roomplan/usdz';
 
 export const FILE_FORMAT = 'apartment-planner';
 
@@ -11,7 +14,7 @@ export function serializeProject(p: Project): string {
 
 export const jsonImporter: PlanImporter = {
   id: 'json',
-  label: 'Apartment Planner JSON',
+  label: 'Apartment Planner layout or RoomPlan scan (JSON)',
   accept: '.json,application/json',
   canImport: (file) => file.name.toLowerCase().endsWith('.json') || file.type === 'application/json',
   async import(file) {
@@ -20,6 +23,10 @@ export const jsonImporter: PlanImporter = {
       data = JSON.parse(await file.text());
     } catch {
       throw new Error('That file is not valid JSON.');
+    }
+    // A RoomPlan CapturedRoom saved as JSON
+    if (isCapturedRoom(data)) {
+      return scanToProject(capturedRoomToScan(data), file.name.replace(/\.json$/i, '') || 'Scanned apartment');
     }
     const obj = data as { format?: string };
     if (obj && typeof obj === 'object' && obj.format && obj.format !== FILE_FORMAT) {
@@ -33,5 +40,5 @@ export const jsonImporter: PlanImporter = {
   },
 };
 
-/** Registry: add the RoomPlan importer here later. */
-export const IMPORTERS: PlanImporter[] = [jsonImporter];
+/** Registry of everything the Import button accepts. */
+export const IMPORTERS: PlanImporter[] = [jsonImporter, roomplanUsdzImporter];

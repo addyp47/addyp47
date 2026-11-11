@@ -7,6 +7,7 @@ import { downloadBlob, slugify } from '../persistence/download';
 import { exportPlanPng } from '../persistence/exportPng';
 import { getPlanSvg } from './plan/svgRef';
 import { capture3D, getExportRoots } from '../three/capture';
+import { summarizeScan } from '../importers/roomplan/scan';
 
 export function Toolbar() {
   const name = useEditor((s) => s.project.name);
@@ -96,7 +97,12 @@ export function Toolbar() {
       let p = await importer.import(file);
       if (listSaved().some((m) => m.name === p.name)) p = { ...p, name: `${p.name} (imported)` };
       loadProject(p);
-      showToast(`Imported “${p.name}”.`);
+      if (p.source.kind === 'roomplan') {
+        const n = summarizeScan(p);
+        useEditor.getState().setViewMode('3d');
+        const count = (k: number, word: string) => `${k} ${word}${k === 1 ? '' : 's'}`;
+        showToast(`Imported scan: ${count(n.walls, 'wall')}, ${count(n.doors, 'door')}, ${count(n.windows, 'window')}, ${count(n.objects, 'object')}.`);
+      } else showToast(`Imported “${p.name}”.`);
     } catch (e) {
       showToast((e as Error).message, 'error');
     } finally {
@@ -140,7 +146,9 @@ export function Toolbar() {
       </button>
       <span className="sep" />
       <input ref={fileInput} type="file" hidden accept={IMPORTERS.map((i) => i.accept).join(',')} onChange={(e) => importFile(e.target.files?.[0])} />
-      <button onClick={() => fileInput.current?.click()}>Import JSON</button>
+      <button onClick={() => fileInput.current?.click()} title="RoomPlan scan (.usdz or .json) or a saved layout (.json)">
+        Import scan / JSON
+      </button>
       <button onClick={exportJson}>Export JSON</button>
       {viewMode === '3d' && <button onClick={exportGlb}>Export GLB</button>}
       <button className="primary" onClick={exportPng}>

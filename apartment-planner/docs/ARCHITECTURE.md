@@ -12,16 +12,15 @@ The plan is drawn as **SVG** rendered by React.
 - **Crisp at any zoom.** Pan and zoom is one `transform` on the root group.
   Strokes use `vector-effect="non-scaling-stroke"` so lines stay a fixed pixel width.
 - **Declarative.** A layer is a pure function of `Project` data, which is the same
-  idea the future three.js view will use.
+  idea the three.js view uses.
 - **Export is easy.** We clone the SVG, strip UI-only nodes (`.no-export`),
   rasterize it onto an offscreen canvas, and save a PNG.
 
 ## World coordinates
 
 - All geometry is stored in **inches**: x to the right, y down (screen convention).
-- The future 3D view maps plan `(x, y)` to three.js `(x, z)`, with height on `y`.
-  Walls, openings, and furniture already store heights (`height`, `sillHeight`,
-  `headHeight`, `elevation`) so a 3D view can extrude them without changing the schema.
+- The 3D view maps plan `(x, y)` to three.js `(x, z)`, with height on `y`. Walls, openings,
+  and furniture store heights (`height`, `sillHeight`, `headHeight`, `elevation`).
 - **Calibration** rescales world geometry (background image, walls, rooms, furniture
   *positions*) by `realLength / measuredLength`. Furniture *sizes* are real-world
   measurements, so they are never rescaled.
@@ -73,7 +72,7 @@ src/
                 rugs.ts (rug sizing + placement per room)
   analysis/     warnings.ts: wall overlap, door swing, furniture overlap, walkway clearance
   persistence/  storage.ts (localStorage slots), useAutosave, exportPng, image downscaling
-  importers/    PlanImporter interface + JSON importer (RoomPlan later)
+  importers/    PlanImporter registry: planner JSON, RoomPlan JSON and USDZ (see below)
   store/        editor.ts: zustand store with project, undo/redo, selection/tool/view
   components/
     plan/       PlanCanvas (pointer routing to tools, pan/zoom, drag state machine) and
@@ -93,16 +92,36 @@ Interaction notes:
 - UI-only SVG nodes carry `className="no-export"` and are stripped from the PNG export.
 
 Anything React-free (model, geometry, analysis, styles, importers) can be reused
-as-is by a future `src/three/` walkthrough view or a Web Worker that parses USDZ.
+as-is by the 3D view, the importers, or a Web Worker.
 
-## Future fit
+## 3D view (`src/three/`)
 
-- **3D walkthrough:** `src/three/buildScene(project)` extrudes `wallPolygon(wall)` to
-  `wall.height`, subtracts openings using `openingSpan` + sill/head heights, and
-  places furniture boxes or models by `kind`. It reads the same store, so 2D and 3D
-  stay in sync. A `viewMode: '2d' | '3d'` switch would go in the store.
-- **RoomPlan USDZ import:** implement `PlanImporter` in `importers/roomplan.ts`.
-  CapturedRoom walls (transform + dimensions) map to `Wall` segments projected onto
-  the floor plane; doors and windows map to `Opening`s by projecting onto their parent
-  wall; objects (sofa, bed, table, storage…) map to `FurnitureItem`s by category.
-  Set `source.kind = 'roomplan'`.
+- `buildScene.ts` turns a `Project` into three.js objects: floors from room polygons, walls
+  as boxes split around their openings (`wallPieces`), window glass, door leaves and swing
+  sectors, and furniture massing per `kind`. Units stay in inches; plan `(x, y)` → `(x, z)`.
+- `View3D.tsx` owns the renderer, orbit camera, and floor-plane dragging. It writes to the
+  same store as the 2D canvas, so undo, warnings, and the side panels work in both views.
+  Structure and furniture rebuild separately, keyed on the parts of `Project` they read.
+- It is lazy-loaded, so three.js is only downloaded when the 3D view opens.
+
+## Scan import (`src/importers/roomplan/`)
+
+Both RoomPlan formats are reduced to one neutral shape, `ScanData`: lists of measured boxes
+(center, floor-plane axis, width/height/depth in meters) for walls, doors, windows, openings,
+and objects.
+
+- `capturedRoom.ts` reads Apple's `CapturedRoom` JSON (column-major transforms + dimensions).
+- `usdz.ts` reads RoomPlan's USDZ with three's `USDLoader`, classifies meshes by name
+  (`Wall0`, `Door0`, `Sofa1`…), and measures each box from its world-space vertices, so it
+  doesn't depend on how the file stores transforms.
+- `scan.ts` (`scanToProject`) converts to the plan model: meters → inches, squares the plan
+  to its longest wall, snaps wall ends into corners, attaches openings to their wall with sill
+  and head heights, maps object categories to furniture kinds, and derives room polygons from
+  closed wall loops.
+
+## Later
+
+- **First-person walkthrough** camera (eye height, walk between rooms) on the existing scene.
+- **Real furniture models** (GLB per catalog item) in place of massing boxes.
+- **Photos as reference:** attach photos to rooms or pieces; use them to set colors and names.
+- **Room splitting** for multi-room scans (planar face tracing instead of simple loops).
