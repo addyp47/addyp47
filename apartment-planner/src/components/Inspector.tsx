@@ -1,4 +1,6 @@
 import { useEditor } from '../store/editor';
+import { CATALOG_BY_ID, furnitureColor } from '../catalog/furniture';
+import { newId } from '../model/defaults';
 import type { RoomType } from '../model/types';
 import { LengthInput } from './LengthInput';
 import { clampOpeningT, wallDir, wallLength } from '../geometry/plan';
@@ -117,6 +119,98 @@ export function Inspector() {
         <button className="danger" onClick={remove}>
           Delete room
         </button>
+      </div>
+    );
+  }
+
+  if (selection.kind === 'furniture') {
+    const f = project.furniture.find((x) => x.id === selection.id);
+    if (!f) return null;
+    const upd = (fn: (it: (typeof project.furniture)[number]) => void) =>
+      mutate((d) => {
+        const it = d.furniture.find((x) => x.id === f.id);
+        if (it) fn(it);
+      });
+    const cat = CATALOG_BY_ID.get(f.catalogId);
+    const sized = cat && (cat.width !== f.width || cat.depth !== f.depth || cat.height !== f.height);
+    return (
+      <div className="section">
+        <h3>Furniture</h3>
+        <div className="row">
+          <label>Name</label>
+          <input type="text" value={f.name} onChange={(e) => upd((it) => void (it.name = e.target.value))} />
+        </div>
+        <div className="row">
+          <label>Width</label>
+          <LengthInput value={f.width} min={1} onCommit={(v) => upd((it) => void (it.width = v))} />
+        </div>
+        <div className="row">
+          <label>Depth</label>
+          <LengthInput value={f.depth} min={1} onCommit={(v) => upd((it) => void (it.depth = v))} />
+        </div>
+        <div className="row">
+          <label>Height</label>
+          <LengthInput value={f.height} min={0.25} onCommit={(v) => upd((it) => void (it.height = v))} />
+        </div>
+        <div className="row">
+          <label>Rotation</label>
+          <input
+            type="number"
+            step={15}
+            value={Math.round(f.rotation)}
+            onChange={(e) => upd((it) => void (it.rotation = ((Number(e.target.value) % 360) + 360) % 360))}
+          />
+          <button className="small" title="Rotate 90° (R)" onClick={() => upd((it) => void (it.rotation = (it.rotation + 90) % 360))}>
+            ↻ 90°
+          </button>
+        </div>
+        <div className="row">
+          <label>Color</label>
+          <input type="color" value={furnitureColor(f, project.style.palette)} onChange={(e) => upd((it) => void (it.color = e.target.value))} />
+          {f.color && (
+            <button className="small" onClick={() => upd((it) => void delete it.color)}>
+              Use palette
+            </button>
+          )}
+        </div>
+        <div className="row wrap">
+          <label className="checkbox" title="Counts as an obstacle for walkway clearance checks">
+            <input type="checkbox" checked={f.obstacle} onChange={(e) => upd((it) => void (it.obstacle = e.target.checked))} />
+            Blocks floor space
+          </label>
+        </div>
+        {sized && cat && (
+          <p className="muted">
+            Catalog size: {cat.width}×{cat.depth}×{cat.height}".{' '}
+            <button
+              className="small"
+              onClick={() =>
+                upd((it) => {
+                  it.width = cat.width;
+                  it.depth = cat.depth;
+                  it.height = cat.height;
+                })
+              }
+            >
+              Reset size
+            </button>
+          </p>
+        )}
+        {cat?.note && <p className="muted">{cat.note}</p>}
+        <div className="row">
+          <button
+            onClick={() => {
+              const id = newId('furn');
+              mutate((d) => void d.furniture.push({ ...f, id, x: f.x + 12, y: f.y + 12 }));
+              select({ kind: 'furniture', id });
+            }}
+          >
+            Duplicate
+          </button>
+          <button className="danger" onClick={remove}>
+            Delete
+          </button>
+        </div>
       </div>
     );
   }

@@ -3,6 +3,7 @@ import { PlanCanvas } from './components/plan/PlanCanvas';
 import { Toolbar } from './components/Toolbar';
 import { ToolPalette } from './components/ToolPalette';
 import { BackgroundPanel } from './components/BackgroundPanel';
+import { FurnitureLibrary } from './components/FurnitureLibrary';
 import { Inspector } from './components/Inspector';
 import { RoomsPanel } from './components/RoomsPanel';
 import { CalibrateDialog } from './components/CalibrateDialog';
@@ -22,6 +23,7 @@ export function App() {
       <aside className="sidebar left">
         <ToolPalette />
         <BackgroundPanel />
+        <FurnitureLibrary />
       </aside>
       <main className="canvas-area">
         <PlanCanvas />

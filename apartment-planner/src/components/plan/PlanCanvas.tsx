@@ -11,14 +11,24 @@ import { setPlanSvg } from './svgRef';
 import { OpeningShape, OpeningsLayer } from './OpeningShape';
 import { clampOpeningT, nearestWall, wallLength } from '../../geometry/plan';
 import { createOpening } from '../../model/defaults';
-import type { Opening, OpeningKind } from '../../model/types';
+import type { FurnitureItem, Opening, OpeningKind } from '../../model/types';
+import { FurnitureDimensions, FurnitureHandles, FurnitureShape } from './FurnitureShape';
+import { toLocal, toWorld } from '../../geometry/plan';
+import { CATALOG_BY_ID, createFurniture } from '../../catalog/furniture';
+import { normalizeDeg, snap } from '../../geometry/vec';
 
 type DragState =
   | { type: 'pan'; startX: number; startY: number; viewX: number; viewY: number; moved: boolean }
   | { type: 'vertex'; refs: VertexRef[]; anchor: Vec2 | null; start: Vec2 }
   | { type: 'background'; start: Vec2; bgStart: Vec2 }
   | { type: 'opening'; id: string; grab: number }
+  | { type: 'move'; id: string; offset: Vec2 }
+  | { type: 'rotate'; id: string }
+  | { type: 'resize'; id: string; hx: number; hy: number; start: FurnitureItem }
   | null;
+
+export const FURNITURE_DND_TYPE = 'application/x-apartment-furniture';
+const MIN_SIZE = 4;
 
 const HINTS: Record<string, string> = {
   select: 'Click to select · drag empty space to pan · scroll to zoom · Del to delete',
@@ -210,6 +220,31 @@ export function PlanCanvas() {
 
     // Select tool
     switch (kind) {
+      case 'furniture': {
+        const f = project.furniture.find((x) => x.id === id);
+        if (!f) return;
+        select({ kind, id });
+        checkpoint();
+        drag.current = { type: 'move', id, offset: { x: world.x - f.x, y: world.y - f.y } };
+        capture();
+        return;
+      }
+      case 'handle': {
+        const f = selection?.kind === 'furniture' && project.furniture.find((x) => x.id === selection.id);
+        if (!f) return;
+        checkpoint();
+        if (target!.getAttribute('data-handle') === 'rotate') drag.current = { type: 'rotate', id: f.id };
+        else
+          drag.current = {
+            type: 'resize',
+            id: f.id,
+            hx: Number(target!.getAttribute('data-hx')),
+            hy: Number(target!.getAttribute('data-hy')),
+            start: { ...f },
+          };
+        capture();
+        return;
+      }
       case 'opening': {
         const o = project.openings.find((x) => x.id === id);
         const w = o && project.walls.find((x) => x.id === o.wallId);
@@ -290,6 +325,26 @@ export function PlanCanvas() {
       return;
     }
 
+    if (d?.type === 'move' || d?.type === 'rotate' || d?.type === 'resize') {
+      mutate(
+        (draft) => {
+          const f = draft.furniture.find((x) => x.id === d.id);
+          if (!f) return;
+          if (d.type === 'move') {
+            f.x = snap(world.x - d.offset.x, 0.5);
+            f.y = snap(world.y - d.offset.y, 0.5);
+          } else if (d.type === 'rotate') {
+            const deg = (Math.atan2(world.y - f.y, world.x - f.x) * 180) / Math.PI + 90;
+            f.rotation = normalizeDeg(e.shiftKey ? Math.round(deg) : snap(deg, 15));
+          } else {
+            Object.assign(f, resizeFurniture(d.start, d.hx, d.hy, world, e.shiftKey));
+          }
+        },
+        { record: false },
+      );
+      return;
+    }
+
     if (d?.type === 'opening') {
       mutate(
         (draft) => {
@@ -326,6 +381,19 @@ export function PlanCanvas() {
     if (hid !== hoverId) setHover(hid);
   };
 
+  const onDrop = (e: React.DragEvent) => {
+    const catalogId = e.dataTransfer.getData(FURNITURE_DND_TYPE);
+    const c = CATALOG_BY_ID.get(catalogId);
+    if (!c) return;
+    e.preventDefault();
+    const rect = svgRef.current!.getBoundingClientRect();
+    const world = screenToWorld(view, e.clientX - rect.left, e.clientY - rect.top);
+    const f = createFurniture(c, world);
+    mutate((d) => void d.furniture.push(f));
+    setTool('select');
+    select({ kind: 'furniture', id: f.id });
+  };
+
   const onPointerUp = () => {
     const d = drag.current;
     if (d?.type === 'vertex') setSnapState(null);
@@ -339,6 +407,13 @@ export function PlanCanvas() {
 
   const selectedWall = selection?.kind === 'wall' ? project.walls.find((w) => w.id === selection.id) : undefined;
   const selectedRoom = selection?.kind === 'room' ? project.rooms.find((r) => r.id === selection.id) : undefined;
+
+  const selectMode = tool === 'select';
+  const rugs = project.furniture.filter((f) => f.kind === 'rug');
+  const pieces = project.furniture.filter((f) => f.kind !== 'rug');
+  const selectedFurniture = selection?.kind === 'furniture' ? project.furniture.find((f) => f.id === selection.id) : undefined;
+  const hoveredFurniture = hoverId ? project.furniture.find((f) => f.id === hoverId) : undefined;
+  const furnitureState = (id: string) => (selection?.id === id ? 'selected' : hoverId === id ? 'hover' : 'idle');
 
   const cursorStyle = tracing || isOpeningTool(tool) ? 'crosshair' : drag.current?.type === 'pan' ? 'grabbing' : 'default';
 
@@ -358,11 +433,18 @@ export function PlanCanvas() {
           if (!drag.current) setHover(null);
         }}
         onContextMenu={(e) => e.preventDefault()}
+        onDragOver={(e) => {
+          if (e.dataTransfer.types.includes(FURNITURE_DND_TYPE)) e.preventDefault();
+        }}
+        onDrop={onDrop}
       >
         <g id="plan-content" transform={`translate(${view.x} ${view.y}) scale(${view.scale})`}>
           <Grid view={view} width={viewport.width} height={viewport.height} />
           <BackgroundLayer bg={project.background} />
           <RoomsLayer project={project} selection={selection} px={px} interactive={!tracing} />
+          {rugs.map((f) => (
+            <FurnitureShape key={f.id} f={f} palette={project.style.palette} px={px} state={furnitureState(f.id)} interactive={selectMode} flagged={false} />
+          ))}
           <WallsLayer
             walls={project.walls}
             color={project.style.palette.walls}
@@ -380,6 +462,9 @@ export function PlanCanvas() {
             interactive={!tracing && !isOpeningTool(tool)}
           />
           <RoomLabels rooms={project.rooms} px={px} />
+          {pieces.map((f) => (
+            <FurnitureShape key={f.id} f={f} palette={project.style.palette} px={px} state={furnitureState(f.id)} interactive={selectMode} flagged={false} />
+          ))}
           {openingPreview && (
             <g className="no-export" pointerEvents="none">
               <OpeningShape opening={openingPreview} wall={project.walls.find((w) => w.id === openingPreview.wallId)!} px={px} ghost selected />
@@ -394,6 +479,9 @@ export function PlanCanvas() {
             </>
           )}
           {selectedRoom && !tracing && <VertexHandles points={selectedRoom.polygon} px={px} />}
+          {selectedFurniture && <FurnitureDimensions f={selectedFurniture} px={px} />}
+          {hoveredFurniture && hoveredFurniture !== selectedFurniture && <FurnitureDimensions f={hoveredFurniture} px={px} />}
+          {selectedFurniture && selectMode && <FurnitureHandles f={selectedFurniture} px={px} />}
 
           {/* Snap guides */}
           {snapState && (
@@ -446,8 +534,46 @@ export function PlanCanvas() {
             {formatFtIn(cursor.x)}, {formatFtIn(cursor.y)}
           </span>
         )}
+        {hoveredFurniture && !drag.current && (
+          <span>
+            <b>{hoveredFurniture.name}</b> {formatFtIn(hoveredFurniture.width, true)} W × {formatFtIn(hoveredFurniture.depth, true)} D ×{' '}
+            {formatFtIn(hoveredFurniture.height, true)} H
+          </span>
+        )}
         <span>{(view.scale * 12).toFixed(1)} px/ft</span>
       </div>
     </div>
   );
 }
+
+/**
+ * Resize from a handle: the opposite edge/corner stays fixed. Works in the
+ * piece's local frame so rotated items resize along their own axes.
+ */
+function resizeFurniture(start: FurnitureItem, hx: number, hy: number, world: Vec2, keepAspect: boolean): Partial<FurnitureItem> {
+  const local = toLocal(start, world);
+  let w = start.width;
+  let d = start.depth;
+  let cx = 0;
+  let cy = 0;
+  if (hx !== 0) {
+    const anchor = (-hx * start.width) / 2;
+    w = Math.max(MIN_SIZE, snap(Math.abs(local.x - anchor), 0.5));
+    cx = anchor + (hx * w) / 2;
+  }
+  if (hy !== 0) {
+    const anchor = (-hy * start.depth) / 2;
+    d = Math.max(MIN_SIZE, snap(Math.abs(local.y - anchor), 0.5));
+    cy = anchor + (hy * d) / 2;
+  }
+  if (keepAspect && hx !== 0 && hy !== 0) {
+    const k = Math.max(w / start.width, d / start.depth);
+    w = snap(start.width * k, 0.5);
+    d = snap(start.depth * k, 0.5);
+    cx = (-hx * start.width) / 2 + (hx * w) / 2;
+    cy = (-hy * start.depth) / 2 + (hy * d) / 2;
+  }
+  const c = toWorld(start, { x: cx, y: cy });
+  return { width: w, depth: d, x: c.x, y: c.y };
+}
+
