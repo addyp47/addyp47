@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PlanCanvas } from './components/plan/PlanCanvas';
 import { Toolbar } from './components/Toolbar';
 import { ToolPalette } from './components/ToolPalette';
@@ -9,13 +9,21 @@ import { RoomsPanel } from './components/RoomsPanel';
 import { CalibrateDialog } from './components/CalibrateDialog';
 import { useShortcuts } from './components/useShortcuts';
 import { useEditor } from './store/editor';
+import { WarningsPanel } from './components/WarningsPanel';
+import { getWarnings } from './analysis/warnings';
 
-type Tab = 'inspect' | 'rooms';
+type Tab = 'inspect' | 'rooms' | 'issues';
 
 export function App() {
   useShortcuts();
   const [tab, setTab] = useState<Tab>('inspect');
   const toast = useEditor((s) => s.toast);
+  const selection = useEditor((s) => s.selection);
+  const warningCount = useEditor((s) => getWarnings(s.project).length);
+
+  useEffect(() => {
+    if (selection) setTab((t) => (t === 'issues' ? t : 'inspect'));
+  }, [selection]);
 
   return (
     <div className="app">
@@ -36,9 +44,13 @@ export function App() {
           <button className={tab === 'rooms' ? 'active' : ''} onClick={() => setTab('rooms')}>
             Rooms
           </button>
+          <button className={tab === 'issues' ? 'active' : ''} onClick={() => setTab('issues')}>
+            Issues{warningCount > 0 && <span className="badge">{warningCount}</span>}
+          </button>
         </nav>
         {tab === 'inspect' && <Inspector />}
         {tab === 'rooms' && <RoomsPanel />}
+        {tab === 'issues' && <WarningsPanel />}
       </aside>
       <CalibrateDialog />
       {toast && <div className={`toast ${toast.kind}`}>{toast.message}</div>}

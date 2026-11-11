@@ -8,6 +8,8 @@ import { addRoom, addWalls, findVerticesAt, moveVertices, type VertexRef } from 
 import { dist } from '../../geometry/vec';
 import { formatFtIn } from '../../geometry/units';
 import { setPlanSvg } from './svgRef';
+import { WarningsLayer } from './WarningsLayer';
+import { getWarnings } from '../../analysis/warnings';
 import { OpeningShape, OpeningsLayer } from './OpeningShape';
 import { clampOpeningT, nearestWall, wallLength } from '../../geometry/plan';
 import { createOpening } from '../../model/defaults';
@@ -59,6 +61,9 @@ export function PlanCanvas() {
   const selection = useEditor((s) => s.selection);
   const hoverId = useEditor((s) => s.hoverId);
   const traceCreatesWalls = useEditor((s) => s.traceCreatesWalls);
+  const showWarnings = useEditor((s) => s.showWarnings);
+  const warnings = getWarnings(project);
+  const flagged = new Set(warnings.filter((w) => w.kind === 'wall' || w.kind === 'door' || w.kind === 'overlap').flatMap((w) => w.furnitureIds));
   const { setView, setViewport, mutate, checkpoint, select, setHover, setCalibration, setTool } = useEditor.getState();
 
   const px = 1 / view.scale; // one screen pixel in world inches
@@ -463,13 +468,15 @@ export function PlanCanvas() {
           />
           <RoomLabels rooms={project.rooms} px={px} />
           {pieces.map((f) => (
-            <FurnitureShape key={f.id} f={f} palette={project.style.palette} px={px} state={furnitureState(f.id)} interactive={selectMode} flagged={false} />
+            <FurnitureShape key={f.id} f={f} palette={project.style.palette} px={px} state={furnitureState(f.id)} interactive={selectMode} flagged={showWarnings && flagged.has(f.id)} />
           ))}
           {openingPreview && (
             <g className="no-export" pointerEvents="none">
               <OpeningShape opening={openingPreview} wall={project.walls.find((w) => w.id === openingPreview.wallId)!} px={px} ghost selected />
             </g>
           )}
+
+          {showWarnings && <WarningsLayer warnings={warnings} project={project} px={px} />}
 
           {/* Selection affordances */}
           {selectedWall && !tracing && (

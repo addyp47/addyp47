@@ -357,3 +357,19 @@ input[type='color'] {
 .lib-item:hover {
   background: var(--accent-soft);
 }
+
+.list.warnings li {
+  border-left: 3px solid var(--warn);
+  margin-bottom: 4px;
+  background: #fdf6ec;
+}
+.list.warnings li.error {
+  border-left-color: var(--error);
+  background: #fbeeec;
+}
+.list.warnings li.selected {
+  outline: 1px solid var(--accent);
+}
+.ok {
+  color: var(--accent);
+}
