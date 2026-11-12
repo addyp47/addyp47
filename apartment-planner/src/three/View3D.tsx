@@ -94,6 +94,7 @@ export default function View3D() {
     const keys = new Set<string>();
     const walk = { active: false, x: 0, y: 0, yaw: 0, pitch: 0 };
     walkRef.current = walk;
+    if (import.meta.env.DEV) (window as unknown as { __walk: typeof walk }).__walk = walk; // for scripted demos
     const fwd = new THREE.Vector3();
     const tick = () => {
       raf = requestAnimationFrame(tick);
